@@ -22,7 +22,7 @@ void f(T &param) {}
 ```cpp
 template<typename T>
 void f(T &&param) {}
-// T可以推导成int, int&, const int& ==> int &param, int &&param, const int &param; 具体涉及到万能个引用，见条款24
+// T可以推导成int, int&, const int& ==> int &param, int &&param, const int &param; 具体涉及到万能引用，见条款24
 ```
 - 模板T既不是指针也不是引用: 这就意味着，无论传入的是什么，param 都将生成一个拷贝
 ```cpp
@@ -38,7 +38,7 @@ const char tt[22] = {0};
 
 template<typename T>
 void f1(T para){};
-template<typename &T>
+template<typename T>
 void f2(T &para){};
 
 f1(tt); // T = const char *, 数组退化成指针
@@ -46,7 +46,7 @@ f2(tt); // T = const char(&)[], 数组的引用，并且带const属性
 
 // ***利用数组引用的推导，可以在编译器通过模板推导得出数组的大小***
 template<typename T, std::size_t N>
-constexpr std::size_t arraySize(T(&)[N]) noexcept { // 返回值是constexpr
+constexpr std::size_t arraySize(T(&)[N]) noexcept { // 返回值是constexpr std::size_t
     return N;// 传入数组，推导出数组引用类型和数组大小
 }
 // 使用： 
@@ -70,8 +70,9 @@ f2(tt); // param ==> void (&)(int)  函数引用
 
 ### 条款2：理解auto类型推导
 ```cpp
+// 以下性质和T模板类型推导一致
 auto x = 27; // auto -- int
-const auto cx = x; // auot -- int or int&
+const auto cx = x; // auto -- int 
 const auto &rx = x; // auto -- int
 auto &&ref1 = x; // auto -- int&
 auto &&ref2 = cx;  // auto --const int &  (单独的auto x不会有const属性，auto &&x会有)
@@ -79,21 +80,21 @@ auto &&ref3 = 27; // auto -- int
 
 const char name[] = "xxxx";
 auto arr1 = name; // auto -- const char *
-auto &arr2 = name // auto -- const char (*)[]
+auto &arr2 = name // auto -- const char (*)[] 数组引用
 
 void func(int);
 auto f1 = func; // auto -- void (*)(int)
 auto &f2 = func2; // auto -- void (&)(int)
 
-// std::initializer_list<int>
+// std::initializer_list<int> 和T有区别
 auto x = 23; // auto -- int
 auot x2(23); // same
 
-auto x3 = {23}; // auot -- std::initializer_list<int>
+auto x3 = {23}; // auto -- std::initializer_list<int>
 auto x4{23}; // same
 ```
-- <font color = red>模板类型推导和auto的区别</font>  -- std::initializer_list<T>的推导
-  auto可以推导initializer_list<T>， 而 T param不行。但是当auto的作用和T作用类似时，不能推导成initializer_list<T>：如下函数返回类型，函数参数、lambda不行。
+- <font color = red>模板类型推导和auto的区别</font>  -- std::initializer_list<T>的推导<br>
+  auto可以推导成initializer_list<T>， 而 T param不行。但是当auto的作用和T作用类似时，不能推导成initializer_list<T>：如下函数返回类型，函数参数、lambda不行。
 ```cpp
 auto func() {
     return {1, 2, 3}; // error auto 出错
