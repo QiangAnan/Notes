@@ -109,9 +109,9 @@ resetV({ 1, 2, 3 }); // error! can't deduce type
 ```
 
 ## 条款3：理解decltype
-- decltype(name): 返回变量name的类型，不增减任何修饰。
-- c++14提出 `decltype(auto)`用来解决c++11中显示使用返回值尾部置法。
-  - decltype(auto) 可以用来做函数返回值，也可以声明变量
+- `decltype(name)`: 返回变量`name`的类型，不增减任何修饰。
+- c++14提出 `decltype(auto)`用来解决`c++11`中显示使用返回值尾部置法。
+  - `decltype(auto)` 可以用来做函数返回值，也可以声明变量
 ```cpp
 // c++11 尾置返回类型，可以使用参数类型推导
 template<typename Container, typename Index> 
@@ -126,7 +126,7 @@ decltype(auto) func(Container &c, Index i) {
 }
 // 万能引用版本
 template<typename Container, typename Index>
-auto func(Container &&c, Index i) ->decltype(std::forward<Container>(c)[i]) {
+auto func(Container &&c, Index i) ->decltype(std::forward<Container>(c)[i]) { // 注意这里是先强转c
     return std::forward<Container>(c)[i];
 }
 template<typename Container, typename Index>
@@ -134,13 +134,13 @@ decltype(auto) func(Container &&c, Index i) {
     return std::forward<Container>(c)[i];
 }
 
-// decltype(auto)
+// *** decltype(auto) ***
 const int &aa = 0;
 auto a = aa; // a不具有const和&引用属性
 decltype(auto) a2 = aa; // a == const int &
 ```
-- decltype((x)) 给变量x加括号，返回变量x的引用
-  - 函数返回时，变量用括号包一下，函数返回类型声明为decltype(auto)来接返回的(x)
+- `decltype((x))` 给变量`x`加括号，返回变量`x的引用`
+  - 函数返回时，变量用括号包一下，函数返回类型声明为`decltype(auto)`来接返回的`(x)`
 ```cpp
 int x = 0;
 decltype((x)) x2 = x;  // x2 == int &
@@ -154,7 +154,7 @@ decltype(auto) func() {
 ### 条款4：了解如何查看推导出的类型
 - IDE可以在编写代码阶段查看推导类型
 - 编译器在编译的时候可以推导
-- 运行时输出 typeid(x).name(), 不同编译器编译出的name不同，如gun编译出i指的是int，pki值得是Point to Const Int
+- 运行时输出 `typeid(x).name()`, 不同编译器编译出的name不同，如gun编译出`i`指的是int，`pki`值得是Point to Const Int
 
 ---
 ## 第二章： auto
