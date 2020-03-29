@@ -171,7 +171,57 @@ auto derefUPLess =  // c++14
     [](const auto& p1, const auto& p2) { 
         return *p1 < *p2; 
     }; 
-``
+```
+- auto和function </br>
+std::function可以包含任何可调用对象，当接收lambda表达式时，function也能存储闭包。相对于auto接收闭包，function需要定义一个实例对象，对象要占内存，但这个内存并不一定能满足闭包要求的内存，如果超出，需要在堆中申请内存，而auto所占的内存等于闭包的内存。所用通常function的实例对象比auto的变量所占内存更多。另外auto的变量名通常比fucntion短，写法上更简洁。
+```cpp
+// function：需要声明对象inst, 写法也比较复杂
+std::function<bool(const std::unique_ptr<T> &, const std::unique_ptr<T> &)> inst = [](const std::unique_ptr<T> &p1, const std::unique_ptr<T> &p2){ 
+    return *p1 < *p2;
+};
+
+// auto
+auto compare = [](const auto &p1, const auto &p2){
+    return *p1 < *p2;
+};
+```
+- 使用auto能避免一些隐式类型的错误
+```cpp
+// unordered_map的key是const属性的，下面的写法错误
+std::unordered_map<std::string, int> m;
+for (const std::pair<std::string, int> &p : m) {
+    // 错误在于map的key为const string
+}
+// 因为声明的pair<string, int>和实际的<const string, int>不匹配，在for循环时会产生一个临时pair<string, int>用来接收m中的元素强转后结果，p再引用这个临时元素。因为引用的是临时变量，这和预期想要达到的目的不同了。
+
+// 直接使用auto
+for (const auto &p : m) {
+    // 不会出错，写法也方便
+}
+```
+- 使用auto后，编码的时候类型看起来可能不那么直观，这时要合理借助IDE类型显示，虽然IDE显示不完美，但有总比没有好吧 ^_^
+
+### 条款6 当auto推到的类别不符合要求时，使用带显示类别的初始化物习惯用法
+虽然条款5中介绍了auto的好处：避免未初始化变量，减少啰嗦的变量声明，可以直接持有闭包，能够避免一些隐式的类型错误等等； 但是auto不是万能的，在遇到隐形的`代理类`类型时，auto会直接推到成代理类，导致和预期的被代理类类型不同。
+```cpp
+// 预期场景
+std::vector<bool> v(10);
+bool test = v[2];
+func(test); // void func(bool); 
+
+// 若用auto接收返回值
+auto test = v[2]; // test类型为std::vector<bool>::reference
+func(test); 
+```
+这是因为vector<bool>比较特殊，其他vector<T>在使用`operator[]`时返回的都是元素的引用，而vector<bool>返回的是vector<bool>::reference类型对象（这是嵌套在std::vector<bool>里面的类），而使用bool去接收`operator[]`的返回值时会隐式的将代理类vector<bool>::reference强转成bool。 和vector<bool>相同的代理类还有std::bitset的std::bitset::reference<br>
+
+这种情况应该怎么避免呢：强制进行另一次类型转换，这种方法称为带显示类别的初始化物习惯用法
+```cpp
+auto test = static_cast<bool>(v[2]);
+```
+---
+## 第三章 转向现代c++
+
 
 --- 
 
