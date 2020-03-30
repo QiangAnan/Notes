@@ -224,6 +224,64 @@ auto test = static_cast<bool>(v[2]);
 ## 第三章 转向现代c++
 
 
+---
+
+## 第五章：右值引用、move语义、完美转发
+- move语义：作用是将昂贵的拷贝操作替换为代价较小的move移动操作。
+move语义使得move-only类型的创建成为可能，比如unique_ptr，future, thread...
+- 完美转发：能够接受任意参数的函数模板，并将之转发到其他函数。
+- 定律：函数的参数永远是一个左值，即使声明的类型是右值引用如 `void func(Widget &&w);`, 判断变量是左值的简单方式是对其取地址。
+
+### 条款23：理解std::move和std::forward
+move和forward只是两个执行转换的模板函数， `move无条件的将实参转换为一个右值`，`forward在条件满足是将参数转换为右值`。
+```cpp
+// c++11 move实现
+template<typename T>
+typename remove_reference<T>::type&& move(T &&param) 
+{
+    using returnType = typename remove_reference<T>::type&&;
+    return static_cast<returnType>(param);
+}
+// c++14 move实现
+template<typename T>
+decltype(auto) move(T &&param)
+{
+    using returnType = remove_reference_t<T>&&;
+    return static_cast<returnType>(param);
+}
+
+// c++11 forward实现版本
+template<typename T>  
+T&& forward(typename remove_reference<T>::type& param) 
+{
+    return static_cast<T&&>(param); // T必须为非引用类型才能返回右值
+}
+// c++14 forward实现版本
+template<typename T>
+T&& forward(remove_reference_t<T> &param) 
+{
+    return static_cast<T&&>(param); // T必须为非引用类型才能返回右值
+}
+
+// forward通常配合外层函数使用，外层还是是个万能模板函数，如下，param为右值时，
+// 推导T为非引用类型，返回的是右值引用，para为左值时T为左值时，返回左值引用
+template<typename T>
+void func(T &&param) 
+{
+    somefunc(std::forward<T>(param)); 
+}
+```
+- param经过move后，返回param的右值类型，如果param被const修饰，返回的右值也有const属性，这时需要看接收移动的变量是否支持const右值，常见是不支持的，所以记住，`需要移动的变量不要声明为const`
+```cpp
+void func(const string text) 
+{
+    // 经过move后，返回const右值引用，此时给s赋值，s的构造函数不存在右值const类型，
+    // 所以可能会被const &类型的构造接收，从而产生构造行为，如果没有符合的const构造接收，则会报错
+    string s(std::move(text));
+}
+```
+
+
 --- 
 
 ## 第七章：并发API
