@@ -281,6 +281,123 @@ void func(const string text)
 }
 ```
 
+### 条款24 区分通用引用与右值引用
+
+- 通用引用： 模板函数`T &&` 或者 `auto &&`, 存在类型推导, 初始化值类型决定了它是左值也还是右值。
+
+如果一个函数模板形参具备 T&&格式且 T 类型需要推导，或者一个对象声明为
+auto&&，那么这个形参或对象就是一个通用引用。通用引用如果用右值初始化，就是右值引用，如果用左值初始化，就是左值引用。
+```cpp
+template<typename T> 
+void func(T &&) {};
+
+auto &&var2 = var1; // int举例能推导：int, int&, 具备const和volatile属性
+```
+- 右值引用： 具体类型`type &&`，不存在类型推导
+```cpp
+void f(Widget &&w) {};
+Widget &&w2 = w1;
+```
+- 注意：以下推导要视情况而定
+```cpp
+template<typename T>
+void func(std::vector<T> &&param) {}; // param为右值引用，T不作为&&的类型推导。
+
+// const属性会破会通用引用属性
+template<typename T>
+void func(const T&& param){}; // rvalue
+
+// 类中的函数类型推导也可能不为通用引用
+template<class T, class Allocator = allocator<T>>
+class vector {
+public:
+    void push_back(T &&x); // x为rvalue，在类vector实例化时就确定了具体类型
+public:
+    template<class... Args> 
+    void emplace_back(Args&&... args); // args不受T控制，为通用引用
+};
+
+// auto &&为通用引用
+auto timeFunc = [] (auto &&func, auto &&... params) {
+    std::forward<decltype(func)>(func)(
+        std::forward<decltype(params)>(params)...
+    );
+}
+```
+
+### 条款25：对右值引用使用std::move, 对通用引用（万能引用）使用std::forward（完美转发)
+```cpp
+// 右值引用, std::move转移所有权
+class Widget {
+public:
+    Widget(Widget&& rhs) // rhs is rvalue reference
+        : name( std::move(rhs.name)),
+          p( std::move(rhs.p))
+    {}
+private:
+    std::string name;
+    std::shared_ptr<SomeDataStructure> p;
+};
+
+// 通用引用：std::forward转发
+class Widget {
+public:
+    template<typename T>
+    void setName(T&& newName) // newName is universal reference
+    { 
+        // 这里不能用move，move会将传入的左值参数给转移了，导致入参左值失效
+        name =  std::forward<T>(newName); 
+    }  
+};
+```
+- 参数个数类型无限制的函数模板 使用万能引用+完美转发
+```cpp
+template<typename T, class... Args>
+shared_ptr<T> make_shared(Args&&... args); // c++11  
+// std::forward<Args>(args)...
+template<typename T, class... Args>
+unique_ptr<T> make_unique(Args&&... args); // c++14
+```
+- 返回值与移动语义
+  - 值传递返回且返回值不是局部变量或者引用参数时，move、forward返回值可以避免返回值拷贝到函数返回值位置的拷贝动作
+  - RVO：return value optimization返回值优化：以下两个条件满足的情况下，不需要对返回值进行move或者forward，因为编译器会执行去拷贝动作直接移动给返回值（局部变量在返回值内存中构造），或者编译器会隐式的move返回值（返回值为参数，直接move到参数的内存中）。
+    - 局部对象与返回值类型相同
+    - 返回的就是那个局部对象
+
+
+```cpp
+// 返回为值传递，lhs为右值，可以保存lhs和rhs相加的和。 std::move
+Matrix operator+( Matrix&& lhs, const Matrix& rhs) 
+{ 
+    lhs += rhs;
+    // return 语句中，通过将 lhs 转换为右值，lhs 将被移动到函数的返回值位置。
+    // 如果 Matrix 不支持移动，则将其转换为一个右值也不会造成伤害，因为右值将被 Matrix
+的拷贝构造函数简单地拷贝
+    return  std::move(lhs); //  move  lhs into
+    // 因为 lhs 是左值，这将迫使编译器将其复制到返回值的位置
+    return lhs;
+} 
+
+// 返回值传递，参数为通用引用。 std::forward
+template<typename T>
+Fraction // by-value return
+reduceAndCopy(T&& frac) // universal reference param
+{
+    frac.reduce();
+    return  std::forward<T>(frac); // move rvalue into return
+} 
+
+// RVO
+Widget makeWidget() 
+{
+    Widget w;
+    return w; // w的参数直接构造在返回值内存中，无需拷贝和移动 
+}
+Widget makeWidget( Widget w) 
+{
+    return w; // 隐式为std::move
+}
+```
 
 --- 
 
