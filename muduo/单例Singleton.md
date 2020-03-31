@@ -107,3 +107,72 @@ Substitution failure is not an error,匹配失败并不是错误,意思是用函
 [https://www.jianshu.com/p/45a2410d4085](https://www.jianshu.com/p/45a2410d4085)
 [https://blog.csdn.net/freeelinux/article/details/53428867](https://blog.csdn.net/freeelinux/article/details/53428867)
 
+- SFINAE子父类继承时是否包含某函数的判断
+```cpp
+// SFINAE失效
+#include <iostream>
+
+template<typename T, typename Sig>                                 
+struct has_foo {                     
+    template <typename U, U> struct type_check;
+    template <typename V> static char (& chk(type_check<Sig, &V::foo>*))[1];
+    template <typename  > static char (& chk(...))[2]; 
+    static bool const value = (sizeof(chk<T>(0)) == 1);
+};
+
+struct A {
+    void foo();
+};
+
+struct B : A {};
+
+int main()
+{
+    using namespace std;
+    cout << boolalpha << has_foo<A, void (A::*)()>::value << endl; // true
+    cout << boolalpha << has_foo<B, void (B::*)()>::value << endl; // false
+}
+
+// 改进使得SFINAE支持子父类
+#include <iostream>
+
+template <typename Type> 
+class has_foo
+{ 
+   class yes { char m;}; 
+   class no { yes m[2];}; 
+   struct BaseMixin 
+   { 
+     void foo(){} 
+   }; 
+   struct Base : public Type, public BaseMixin {}; 
+
+   template <typename T, T t>  
+   class Helper{}; 
+
+   template <typename U> 
+   static no deduce(U*, Helper<void (BaseMixin::*)(), &U::foo>* = 0);  // 1)
+
+   static yes deduce(...); // 2)
+public: 
+    // 推导1)，若Type中有foo，则Helper中&U::foo编译不通过(两个基类都有foo)，则应该匹配2)
+   static const bool result = sizeof(yes) == sizeof(deduce((Base*)(0))); 
+}; 
+
+struct A {
+    void foo();
+};
+
+struct B : A {};
+
+struct C {};
+
+int main()
+{
+    using namespace std;
+    cout << boolalpha << has_foo<A>::result << endl; // true
+    cout << boolalpha << has_foo<B>::result << endl; // true
+    cout << boolalpha << has_foo<C>::result; // false
+}
+```
+
