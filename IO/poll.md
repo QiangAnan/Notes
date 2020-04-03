@@ -39,6 +39,8 @@ struct pollfd{
   - 如果在超时前没有任何事件发生，poll()返回 0
   - 失败时，poll() 返回 -1。
 
+ - 参考
+ [https://blog.csdn.net/lianghe_work/article/details/46534029](https://blog.csdn.net/lianghe_work/article/details/46534029)
  
  ---
  
