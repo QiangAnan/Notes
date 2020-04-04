@@ -26,7 +26,7 @@ struct pollfd{
 ```
 - pollfd事件变化
 
-![pollfd事件变化](../pic/image.png)
+![pollfd事件变化](../pic/poll_event.png)
 
 - 超时timeout
 
