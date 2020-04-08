@@ -91,9 +91,44 @@ struct pollfd{
  ---
  
  ## epoll
+ linux特有，epoll是在2.6内核中提出的，是之前的select和poll的增强版本。相对于select和poll来说，epoll更加灵活，没有描述符限制。epoll使用一个文件描述符管理多个描述符，将用户关系的文件描述符的事件存放到内核的一个事件表中，这样在用户空间和内核空间的copy只需一次。
+
  
- 
- ---
+- 函数原型
+```cpp
+#include <sys/epoll.h>
+// 创建一个epoll的句柄，size用来告诉内核这个监听的数目一共有多大
+int epoll_create(int size);
+
+// epoll的事件注册函数, 不同与select()是在监听事件时告诉内核要监听什么类型的事件，而是在这里先注册要监听的事件类型。
+//     1. epfd是epoll_create()的返回值; 2. op表示动作:EPOLL_CTL_ADD/EPOLL_CTL_MOD/EPOLL_CTL_DEL; 3. fd表示要监听的描述符
+//     4. event 告诉内核需要监听什么事：EPOLLIN(可读)、EPOLLOUT(可写)、EPOLLPRI(紧急可读)、EPOLLERR(错误)、EPOLLHUP(被挂起)、
+//        EPOLLET(边缘触发)、EPOLLONESHOT(只监听一次事件，当监听完这次事件之后，如果还需要继续监听这个socket的话，需要再次把这个socket加入到EPOLL队列里)
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+
+// 等待事件的产生, 函数返回需要处理的事件数目，如返回0表示已超时. maxevents表示events有多大，不能大于创建时的size
+int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+
+
+// epoll_event结构体
+struct epoll_event {
+  __uint32_t events;  /* Epoll events */
+  epoll_data_t data;  /* User data variable */
+};
+```
+- 内部数据结构： 一棵红黑数据保存所有文件描述符，当某个描述符发生状态变化时，将其拷贝至一个链表中，epoll_wait返回这个链表。
+[https://www.cnblogs.com/pluser/p/epoll_principles.html](https://www.cnblogs.com/pluser/p/epoll_principles.html)
+
+- 优点：
+  - 非线性扫描
+  - 不用频繁拷贝大量文件描述符与用户态和内核空间之间
+- 代码 [epoll_client.cpp](./epoll_client.cpp) [epoll_client.cpp](./epoll_client.cpp)
+
+- 参考
+[https://www.cnblogs.com/Anker/p/3263780.html](https://www.cnblogs.com/Anker/p/3263780.html)
+
+
+---
  
  ## 参考：
  
