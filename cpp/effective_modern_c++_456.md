@@ -30,6 +30,12 @@ T&& forward(typename remove_reference<T>::type& param)
 {
     return static_cast<T&&>(param); // T必须为非引用类型才能返回右值
 }
+template<typename T>  
+T&& forward(typename remove_reference<T>::type&& param)  // 右值版本
+{
+    return static_cast<T&&>(param); // T必须为非引用类型才能返回右值
+}
+
 // c++14 forward实现版本
 template<typename T>
 T&& forward(remove_reference_t<T> &param) 
@@ -38,7 +44,8 @@ T&& forward(remove_reference_t<T> &param)
 }
 
 // forward通常配合外层函数使用，外层还是是个万能模板函数，如下，param为右值时，
-// 推导T为非引用类型，返回的是右值引用，para为左值时T为左值时，返回左值引用
+// 推导T为非引用类型，返回的是右值引用，para为左值时T为左值时，返回左值引用。
+// 根据所有函数形参都是左值的定律，可以得出，调用forward的版本一直是左值引用版本，不管param传入的类型是左值还是右值
 template<typename T>
 void func(T &&param) 
 {
