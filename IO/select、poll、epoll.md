@@ -56,8 +56,8 @@ int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 
 // pollfd结构
 struct pollfd{
-	int fd;			    //文件描述符
-	short events;	  //等待的事件
+	int fd;		    //文件描述符
+	short events;   //等待的事件
 	short revents;	//实际发生的事件（输出）
 };
 ```
@@ -76,8 +76,16 @@ struct pollfd{
   - 如果在超时前没有任何事件发生，poll()返回 0
   - 失败时，poll() 返回 -1。
 
+- 优缺点
+  - 优点：相比select没有最大描述符数量限制（链表）
+  - 缺点
+    - 仍然是线性扫描，随着描述符数量增多而时间变多
+	- 仍然需要将大量描述符整体复制于用户态和内核的地址空间之间
+ - 代码： [poll_service.cpp](./poll_service.cpp) [poll_client](./poll_client.cpp)
  - 参考
  [https://blog.csdn.net/lianghe_work/article/details/46534029](https://blog.csdn.net/lianghe_work/article/details/46534029)
+ 
+ [https://www.cnblogs.com/Anker/p/3261006.html](https://www.cnblogs.com/Anker/p/3261006.html)
  
  ---
  
