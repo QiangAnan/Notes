@@ -81,8 +81,9 @@ struct pollfd{
   - 缺点
     - 仍然是线性扫描，随着描述符数量增多而时间变多
 	- 仍然需要将大量描述符整体复制于用户态和内核的地址空间之间
- - 代码： [poll_service.cpp](./poll_service.cpp) [poll_client](./poll_client.cpp)
+ - 代码： [poll_service.cpp](./poll_service.cpp) [poll_client.cpp](./poll_client.cpp)
  - 参考
+ 
  [https://blog.csdn.net/lianghe_work/article/details/46534029](https://blog.csdn.net/lianghe_work/article/details/46534029)
  
  [https://www.cnblogs.com/Anker/p/3261006.html](https://www.cnblogs.com/Anker/p/3261006.html)
