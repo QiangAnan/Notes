@@ -399,6 +399,122 @@ Widget makeWidget( Widget w)
 }
 ```
 
+
+
+### 条款26：避免对通用引用重载
+通用引用函数是c++中最贪吃的函数，除了完全匹配，否则都会匹配通用引用函数，然而匹配成通用引用函数的实际与预期不一致可能造成意想不到的编译或运行时错误，
+因此最好不要重载通用引用，如果确实需要重载，参见下一条款说明。
+
+### 条款27：熟悉对通用引用重载的可选方式
+- 为了解决条款26中的问题，可以采用：放弃重载、传const左值引用（精确匹配）、传值（非通用引用）等非常局限性的解决方法（不支持完美转发：传左值转发左值，传右值转发右值）。
+- 既能完美转发又能重载：`标签分派 Tag dispatch`
+```cpp
+template<typename T>
+void logAndAdd(T&& name)
+{
+  logAndAddImpl(std::forward<T>(name), std::is_integral<<typename std::remove_reference<T>::type>()); // 封装一层，通过参数is_integral区分重载
+  // c++14 -->  logAndAddImpl(std::forward<T>(name), std::is_integral<<std::remove_reference_t<T>>()); 
+}
+
+// 第二个参数可取： std::true_type、 std::false_type
+
+// 重载false
+template<typename T> 
+void logAndAddImpl(T&& name, std::false_type)  // 参数时false
+{ 
+    auto now = std::chrono::system_clock::now(); 
+    log(now, "logAndAdd"); 
+    names.emplace(std::forward<T>(name));
+}
+
+// 重载true
+std::string nameFromIdx(int idx);
+void logAndAddImpl(int idx, std::true_type) // true
+{ 
+    logAndAdd(nameFromIdx(idx));
+} 
+```
+- std::enable<br>
+标签分派虽然能解决通用引用数量较少的参数重载，如果参数较多，总是不能避免覆盖不了的被通用引用匹配上的非预期场景。
+为了避免这些场景绕过标签分派，c++使用了杀伤力更大的工具`std::enable_if`, 使用 std::enable_if 的模板只有在满足 std::enable_if 指定的条件时才启用.
+std::enable_if的工作原理依靠`SFINAE`技术。
+为了更好理解下面例子，我们需要
+  - 引入`std:is_same`，`std::is_same<T1, T2>::value`用来判断两个参数是否是同一类型，
+  - 引入`std::decay`, 使用`std::decay<T>::type`去除T的const、volatile和引用的限定属性.
+  - 引入`std::is_base_of`, `std::is_base_of<T1, T2>::value`用来判断两个类型是否是继承关系
+```cpp
+// 初识用法
+class Person {
+public:
+  template<typename T, typename = typename std::enable_if<condition>::type>
+  explicit Person(T&& n);
+};
+
+// typename std::decay<T>::type 去除T 引用、cv属性后的类型； 
+// !std::is_same<T1, T2>::value 是否相同的value
+// typename std::enable_if<bool>::type 是否满足enable_if条件
+class Person {
+public:
+    template<typename T, 
+             typename = typename std::enable_if<
+                  !std::is_same<Person, typename std::decay<T>::type>::value // is_same
+                >::type>
+    explicit Person(T&& n);
+
+    template<typename T, 
+             typename = typename std::enable_if<
+                  !std::is_base_of<Person, typename std::decay<T>::type>::value // is_base_of 用在子父类继承上
+                >::type>
+    explicit Person(T&& n);
+
+    // c++14通过对别名type的优化(去掉显示指明类型的typename和后缀::type)，可以简化成
+    template<typename T, typename = std::enable_if_t<!std::is_same<Person, std::decay_t<T>>::value>>
+    explicit Person(T&& n);
+};
+```
+
+- 使用enable_if实现标签分类达到的效果
+```cpp
+class Person {
+public:
+    // 满足非person类或继承类并且非int类型的参数 的通用引用函数
+    template<typename T, typename = std::enable_if_t<!std::is_base_of<Person, std::decay_t<T>>::value &&
+                                                     !std::is_integral<std::remove_reference_t<T>>::value>>
+    explicit Person(T&& n) 
+        : name(std::forward<T>(n)) 
+    {
+    } 
+
+    explicit Person(int idx) 
+    : name(nameFromIdx(idx))
+    {
+    }
+
+private:
+    std::string name;
+};
+```
+- 其他知识点<br>
+`is_constructible` 这个类型特性执行编译时检查，以确定是否可以从一个不同类型(或类型集)的对象(或对象集)构造另一个类型的对象，因此断言很容易编写
+```cpp
+class Person {
+public:
+    template<typename T, typename = std::enable_if_t<!std::is_base_of<Person, std::decay_t<T>>::value &&
+                                                     !std::is_integral<std::remove_reference_t<T>>::value 
+                                                    >  
+            >
+    explicit Person(T&& n)
+    : name(std::forward<T>(n))
+    {
+        // 如果用户代码试图从某个类型创建 Person，而该类型又不能用于构造 std::string，则会生成指定的错误消息。
+        static_assert(std::is_constructible<std::string, T>::value, "Parameter n can't be used to construct a std::string");
+        ...
+    }
+};
+ 
+```
+
+
 --- 
 
 ## 第七章：并发API
