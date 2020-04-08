@@ -39,7 +39,7 @@ int FD_ISSET(int fd, fd_set *fdset);   // 检查集合中指定的文件描述�
 	- 对socket进行扫描时是线性扫描，即采用轮询的方法，效率较低
 	- 需要维护一个用来存放大量fd的数据结构，这样会使得用户空间和内核空间在传递该结构时复制开销大
 
-- 参考代码: select_service.cpp  select_client.cpp
+- 参考代码: [select_service.cpp](./select_service.cpp)  [select_client.cpp](./select_client.cpp)
 
 - 参考： 
 
