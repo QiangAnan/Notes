@@ -295,3 +295,102 @@ public:
  
 ```
 
+
+### 条款28 理解引用折叠
+引用组合折叠：两者中如果有一个为左值引用，则结果为左值引用。
+```cpp
+& + & = &
+& + && = &
+&& + & = &
+&& + && = &&
+```
+引用折叠支撑完美转发
+```cpp
+template<typename T>
+void f(T &&param) 
+{
+    somefunc(std::forward<T>(param)); // 若param为左值引用则T为&，若param为右值引用，则T为单类型。
+}
+
+typelate<typename T>
+T&& forward(remove_reference_t<T> &param)
+{
+    return static_cast<T&&>(param); // 若T为引用，则返回经过折叠后也为引用，若T为单类型，返回右值
+}
+```
+引用折叠出现的四种场景：
+- 模板实例化
+- auto推导
+```cpp
+Widget w;
+auto &&w1 = w; // w为左值，w1推导类型为&
+
+Widget func();
+auto &&w2 = func(); // func()返回类型为临时变量，为右值
+```
+- typedef
+```cpp
+template<typename T>
+class Widget {
+public:
+    typedef T&& RvalueRefToT; // RvalueRefToT根绝T的类型推导成T&或者T&&
+};
+```
+- 别名声明
+
+### 条款29 假定移动操作不存在、成本高、未使用
+
+- 当对象本身保存存储内容时，移动不会比复制更快。移动比复制快在于移动至少会消耗一个指针的复制代价，如果复制过程不比复制一个指针的过程复杂则说移动不会比复制来的更快。
+
+std::array与其他容器的不同在于其他容器的内容存储在堆上，移动的时候可以移动指针的指向从而效率很高，而array的内存直接存储在对象本身，所以不论是复制还是移动，需要的都是线性的复杂度。
+
+string具有小型字符串优化特性(small string optimization)SSO, 小型字符串（不超过15个字符的字符串）会存储在string对象的缓冲区内。
+
+- 移动本可以发生的场景下，要求移动操作不可以抛出异常，移动函数需要加上noexcept声明。
+
+
+### 条款30： 熟悉完美转发的失败场景
+转发：一个函数把自己的形参传递给另一个函数，让第二个函数接收第一个函数所接受的同一对象。
+完美转发：不会转发对象，还要转发对象的特征如：型别，左值右值，const，volatile属性
+```cpp
+// 单一参数完美转发
+template<typename T>
+void fwd(T &&param)
+{
+    someFunc(std::forward<T>(param));
+}
+
+// 变参
+template<typename... Ts>
+void fwd(Ts&&... args)
+{
+    someFunc(std::forward<Ts>(args)...);
+}
+
+```
+
+- 大括号初始化物不能转发
+
+`fwd({1, 3, 4}); // {1, 3, 4}会被推导成std::initializer_list`
+
+- 0和NULL用作空指针
+
+类型推导会推导成整型
+
+- 仅有声明的整型static const成员变量
+
+没有定义的话，没有内存地址，static const成员变量会被替换成对应的数字，类型推导中的引用实质上是指针，指针没有地址不能干活。如果不涉及内存推导，不涉及取地址，只是单纯的值传递，可以使用static const。如果要对static const取地址，需要显示的在类定义变量。`const int className::var;`
+
+- 重载函数和模板函数当成另一个模板函数的参数时
+
+重载函数因为类型确定，传入模板后可以推导类型，模板函数传入另一个模板时类型无法推导。如果要将模板函数传递给另一个模板函数，则需要显示的指明第一个模板函数的推导类型，或者static_cast强转类型后再传递给第二个模板函数。
+
+- 位域无法用作模板函数的实参
+
+非const引用不能绑定到位域，因为位域是字节中的特定位置，没办法对其取地址。 接收位域实参的函数实质上是收到的位域的副本，因为位域没有地址值，无法通过引用或者指针来绑定。在完美转发是要求转发原对象，根本不支持引用，传入的也是位域的副本，所以可以显示声明一个副本来接收位域，然后再转发这个副本。
+
+- 总结下来，类型推导无法确定具体类型的转发失败（initializer_list, 0_NULL, 重载与模板函数），如果无法取得地址值的对象也会转发失败（仅声明的static const int, 位域）。
+
+
+
+## 第六章：lambda表达式
