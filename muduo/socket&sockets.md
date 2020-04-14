@@ -26,19 +26,24 @@ class Socket:
 - moduo::net::sockets  域名中的函数接口，非class
 ```cpp
 int createNonblockingOrDie(sa_family_t family); // 创建socket fd
-// service
+
+// server
 void bindOrDie(int sockfd, const struct sockaddr* addr);
 void listenOrDie(int sockfd);
 int  accept(int sockfd, struct sockaddr_in6* addr);
+
 // client
 int  connect(int sockfd, const struct sockaddr* addr);
-// 收发
+
+// 收发 read write
 ssize_t read(int sockfd, void *buf, size_t count);
 ssize_t readv(int sockfd, const struct iovec *iov, int iovcnt); // 按照结构体iovec个数读
 ssize_t write(int sockfd, const void *buf, size_t count);
-// 关闭
+
+// 关闭 close shutdown
 void close(int sockfd);
 void shutdownWrite(int sockfd);
+
 // ip&port主机序和网络序转换
 void toIpPort(char* buf, size_t size, const struct sockaddr* addr);
 void toIp(char* buf, size_t size, const struct sockaddr* addr);
